@@ -1,15 +1,23 @@
 const fs = require('fs');
-const Tokenizer = require('./JackTokenizer');
 
-function adjustPath(filePath) {
-    return filePath.replace('.js', '.xml');
-}
+
 
 class CompilationEngine {
     constructor(filePath) {
-        this.fileContents = fs.readFileSync(filePath, 'utf-8');
-        this.tokenizer = new Tokenizer();
+        const fileContents = fs.readFileSync(filePath, 'utf-8');
+        this.tokenizer = new JackTokenizer(fileContents);
         this.writeStream = fs.createWriteStream(adjustPath(filePath));
+        this.compileClass();
+    }
+
+    compileClass() {
+        while(this.tokenizer.tokenType() !== 'KEYWORD') {
+            if(this.tokenizer.hasMoreTokens) this.tokenizer.advance();
+        }
+        if(this.tokenizer.keyWord() !== 'CLASS') {
+            throw new Error('Expected Class declaration');
+        }
+        writeStream.write('<>')
     }
 }
 

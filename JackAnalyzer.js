@@ -1,6 +1,11 @@
-
+const path = require('path');
 const fs = require('fs');
-const CompilationEngine = require('./CompilationEngine');
+const JackTokenizer = require('./JackTokenizer');
+// const CompilationEngine = require('./CompilationEngine');
+
+function adjustPath(filePath) {
+    return filePath.replace('.jack', 'tt.xml');
+}
 
 function analyzer(filePath) {
     if(fs.lstatSync(filePath).isDirectory()) {
@@ -10,7 +15,12 @@ function analyzer(filePath) {
             analyzer(fullPath);
         })
     } else {
-        new CompilationEngine(filePath);
+        if(path.extname(filePath) === '.jack') {
+            const fileContents = fs.readFileSync(filePath, 'utf8');
+            const tokens = new JackTokenizer(fileContents);
+            fs.writeFileSync(`${adjustPath(filePath)}`, tokens.join(''));
+            // new CompilationEngine(filePath);
+        }
     }   
 }
 
