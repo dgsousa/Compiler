@@ -300,6 +300,7 @@ class CompilationEngine {
 		}
 
 		// get statements
+		statements = this.compileStatements();
 
 		// get last bracket
 		tokenType = this.getTokenType();
@@ -381,6 +382,180 @@ class CompilationEngine {
 			this.tokenIndex++;
 		}
 		return dec + type + varName + semiColon;
+	}
+
+	compileStatements() {
+		let statements = '';
+		let token = this.getToken();
+		while(statementDecs.has(token)) {
+			if(token === 'let') {
+				statments += this.compileLet();
+			} else if(token === 'do') {
+				statements += this.compileDo();
+			} else if(token === 'while') {
+				statements += this.compileWhile();
+			} else if(token === 'if') {
+				statements += this.compileIf();
+			} else if(token === 'return') {
+				statements += this.compileReturn();
+			}
+			token = this.getToken();
+		}
+		return statements;
+	}
+
+	compileLet() {
+		let letDec = '';
+		let varName = '';
+		let firstSquareBracket = '';
+		let firstExpression = '';
+		let lastSquareBracket = '';
+		let equals = '';
+		let secondExpression = '';
+		let semiColon = '';
+		let tokenType = '';
+		let token = '';
+
+		// get Let
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'let') {
+			throw new Error('Expected keyword "let"');
+		} else {
+			letDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get varName
+		let tokenType = this.getTokenType();
+		if(tokenType !== 'identifier') {
+			throw new Error('Expected identifier');
+		} else {
+			varName = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstSquareBracket, firstExpress, secondSquareBracket
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType === 'symbol' && token === '[') {
+			firstSquareBracket = this.getFullToken();
+			this.tokenIndex++;
+			firstExpression = this.compileExpression();
+			secondSquareBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get equals
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '=') {
+			throw new Error('Expected symbol =');
+		} else {
+			equals = this.getFullToken();
+			this.tokenIndex++;
+			secondExpression = this.compileExpression();
+		}
+
+		// get semiColon
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ';') {
+			throw new Error('Expected symbol ;');
+		} else {
+			semiColon = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return (
+			letDec +
+			varName +
+			firstSquareBracket +
+			firstExpression +
+			lastSquareBracket + 
+			equals +
+			secondExpression +
+			semiColon
+		)
+	}
+
+	compileIf() {
+		let ifDec = '';
+		let firstParen = '';
+		let expression = '';
+		let secondParen = '';
+		let firstBracket = '';
+		let firstStatements = '';
+		let secondBracket = '';
+		let elseDec = '';
+		let thirdBracket = '';
+		let secondStatements = '';
+		let fourthBracket = '';
+		let tokenType = '';
+		let token = '';
+
+		// get if
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'if') {
+			throw new Error('Expected keyword "if"');
+		} else {
+			ifDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstParen, expression, secondParen
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '(') {
+			throw new Error('Expected symbol (');
+		} else {
+			firstParen = this.getFullToken();
+			this.tokenIndex++;
+			expression = this.compileExpression();
+			secondParen = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstParen, expression, secondParen
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '{') {
+			throw new Error('Expected symbol {');
+		} else {
+			firstBracket = this.getFullToken();
+			this.tokenIndex++;
+			firstStatements = this.compileStatements();
+			secondBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get else block
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'else') {
+			throw new Error('Expected keyword else');
+		} else {
+			thirdBracket = this.getFullToken();
+			this.tokenIndex++;
+			secondStatements = this.compileStatements();
+			fourthBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return (
+			ifDec +
+			firstParen +
+			expression +
+			secondParen + 
+			firstBracket + 
+			firstStatements +
+			secondBracket +
+			elseDec +
+			thirdBracket +
+			secondStatements +
+			fourthBracket
+		)
 	}
 
 
