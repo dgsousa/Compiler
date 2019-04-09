@@ -1,24 +1,389 @@
 const fs = require('fs');
 
-
+const subroutineDecs = new Set(['constructor', 'function', 'method']);
+const statementDecs = new Set(['let', 'if', 'else', 'while', 'do', 'return']);
 
 class CompilationEngine {
-    constructor(filePath) {
-        const fileContents = fs.readFileSync(filePath, 'utf-8');
-        this.tokenizer = new JackTokenizer(fileContents);
-        this.writeStream = fs.createWriteStream(adjustPath(filePath));
-        this.compileClass();
-    }
+	constructor(filePath, tokens) {
+		this.tokenIndex = 0;
+		this.tokens = tokens;
+		this.compiledTokens = this.compileClass();
+		console.log(this.compiledTokens);
+		fs.writeFileSync(filePath, this.compiledTokens);
+	}
 
-    compileClass() {
-        while(this.tokenizer.tokenType() !== 'KEYWORD') {
-            if(this.tokenizer.hasMoreTokens) this.tokenizer.advance();
-        }
-        if(this.tokenizer.keyWord() !== 'CLASS') {
-            throw new Error('Expected Class declaration');
-        }
-        writeStream.write('<>')
-    }
+	getTokenType() {
+		return this.tokens[this.tokenIndex].split('>')[0].split('<')[1];
+	}
+
+	getToken() {
+		return this.tokens[this.tokenIndex].split('>')[1].split('<')[0].trim();
+	}
+
+	getFullToken() {
+		return this.tokens[this.tokenIndex] + '\n';
+	}
+
+	compileClass() {
+		let classDeclaration = '';
+		let classIdentifier = '';
+		let firstClassBracket = '';
+		let classVarDecs = '';
+		let subroutineDec = '';
+		this.tokenIndex++;
+		
+		if(this.getTokenType() !== 'keyword' || this.getToken() !== 'class') {
+			throw new Error('Expected Class Declaration');
+		} else {
+			classDeclaration = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		if(this.getTokenType() !== 'identifier') {
+			throw new Error('Expected Identifier');
+		} else {
+			classIdentifier = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		if(this.getTokenType() !== 'symbol' || this.getToken() !== '{') {
+			throw new Error('Expected Symbol {');
+		} else {
+			firstClassBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		while(!subroutineDecs.has(this.getToken())) {
+			classVarDecs += this.compileClassVarDec();
+		}
+
+		while(this.tokenIndex < this.tokens.length - 2) {
+			classVarDecs += this.compileSubroutineDec();
+		}
+
+		return (
+			'<class>\n' + 
+			classDeclaration + 
+			classIdentifier +
+			firstClassBracket +
+			classVarDecs + 
+			this.tokens[this.tokens.length - 2] +
+			'</class>'
+		);
+	}
+
+	compileClassVarDec() {
+		let fieldOrStaticDec = '';
+		let type = '';
+		let varName = '';
+		let semicolon = '';
+		let tokenType = '';
+		let token = '';
+
+		// get field or static declaration
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(
+			tokenType !== 'keyword' ||
+			(token !== 'field' && token !== 'static')
+		) {
+			throw new Error('Expected keyword "field" or "static"');
+		} else {
+			fieldOrStaticDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get type
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(
+			tokenType !== 'keyword' && tokenType !== 'identifier'
+		) {
+			throw new Error('Expected keyword or identifier')
+		} else if(
+			tokenType === 'keyword' && 
+			(token !== 'int' && token !== 'char' && token !== 'boolean')
+		) {
+			throw new Error('Expected token to be "int", "char", or "boolean"')
+		} else {
+			type = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get varName
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'identifier') {
+			throw new Error('Expected identifier');
+		} else {
+			varName = this.getFullToken();
+			this.tokenIndex++;
+			if(this.getToken() === ',') {
+				while(this.getToken() !== ';') {
+					if(this.getToken() !== ',') {
+						throw new Error('Expected symbol ","');
+					}
+					varName += this.getFullToken();
+					this.tokenIndex++;
+					if(this.getTokenType() !== 'identifier') {
+						throw new Error('Expected identifier');
+					}
+					varName += this.getFullToken();
+					this.tokenIndex++;
+				}
+			}
+		}
+
+		// get semicolon
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ';') {
+			throw new Error('Expected symbol ";"');
+		} else {
+			semicolon = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return fieldOrStaticDec + type + varName + semicolon;
+	}
+
+	compileSubroutineDec() {
+		let subroutineDec = '';
+		let typeDec = '';
+		let subroutineNameDec = '';
+		let firstParen = '';
+		let parameterList = '';
+		let secondParen = '';
+		let subroutineBody = '';
+		let tokenType = '';
+		let token = '';
+		
+		// get subroutineDec
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'keyword' || !subroutineDecs.has(token)) {
+			throw new Error('Expected keyword "constructor", "function", or "method"');
+		} else {
+			subroutineDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get typeDec
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'keyword' && tokenType !== 'identifier') {
+			throw new Error('Expected keyword or identifier');
+		} else if(
+			tokenType === 'keyword' &&
+			!(token === 'void' || token === 'int' || token === 'char' || token === 'boolean')
+		 ) {
+			throw new Error('Expected keyword void, int, char or boolean');
+		} else {
+			typeDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get subroutineNameDec
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'identifier') {
+			throw new Error('Expected dentifier');
+		} else {
+			subroutineNameDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstParen
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '(') {
+			throw new Error('Expected symbol "("');
+		} else {
+			firstParen = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get parameterList
+		parameterList = this.compileParameterList();
+
+		// get secondParen
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ')') {
+			throw new Error('Expected symbol ")"');
+		} else {
+			secondParen = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		subroutineBody = this.compileSubroutineBody();
+
+		console.log(
+			subroutineDec,
+			typeDec,
+			subroutineNameDec,
+			firstParen,
+			parameterList,
+			secondParen)
+		;
+	}
+
+	compileParameterList() {
+		let parameterList = '';
+		let tokenType = '';
+		let token = '';
+		while(this.getToken() !== ')') {
+			let type = '';
+			let varName = '';
+			let comma = '';
+			
+			// get typeDec
+			tokenType = this.getTokenType();
+			token = this.getToken();
+			if(tokenType !== 'keyword' && tokenType !== 'identifier') {
+				throw new Error('Expected keyword or identifier');
+			} else if(
+				tokenType === 'keyword' &&
+				!(token === 'void' || token === 'int' || token === 'char' || token === 'boolean')
+			 ) {
+				throw new Error('Expected keyword void, int, char or boolean');
+			} else {
+				type = this.getFullToken();
+				this.tokenIndex++;
+			}
+
+			// get varName
+			tokenType = this.getTokenType();
+			token = this.getToken();
+			if(tokenType !== 'identifier') {
+				throw new Error('Expected identifier');
+			} else {
+				varName = this.getFullToken();
+				this.tokenIndex++;
+			}
+
+			// get comma
+			tokenType = this.getTokenType();
+			token = this.getToken();
+			if(tokenType === 'symbol' && token === ',') {
+				comma = this.getFullToken();
+				this.tokenIndex++;
+			}
+
+			parameterList += (type + varName + comma);
+		}
+		return parameterList;
+	}
+
+	compileSubroutineBody() {
+		let firstBracket = '';
+		let varDecs = '';
+		let statements = '';
+		let lastBracket = '';
+		let tokenType = '';
+		let token = '';
+
+		// get first bracket
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '{') {
+			throw new Error('Expected Symbol {');
+		} else {
+			firstBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get varDecs
+		token = this.getToken();
+		while(!statementDecs.has(token)) {
+			varDecs += this.compileVarDec();
+		}
+
+		// get statements
+
+		// get last bracket
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '}') {
+			throw new Error('Expected Symbol }');
+		} else {
+			firstBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return firstBracket + varDecs + statements + lastBracket;
+	}
+
+	compileVarDec() {
+		let dec = '';
+		let type = '';
+		let varName = '';
+		let semiColon = '';
+		let tokenType = '';
+		let token = '';
+
+		// get var
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(this.getTokenType() !== 'keyword' || this.getToken() !== 'var') {
+			throw new Error('Expected keyword var');
+		} else {
+			dec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get typeDec
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'keyword' && tokenType !== 'identifier') {
+			throw new Error('Expected keyword or identifier');
+		} else if(
+			tokenType === 'keyword' &&
+			!(token === 'void' || token === 'int' || token === 'char' || token === 'boolean')
+		 ) {
+			throw new Error('Expected keyword void, int, char or boolean');
+		} else {
+			type = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get varName
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'identifier') {
+			throw new Error('Expected identifier');
+		} else {
+			varName = this.getFullToken();
+			this.tokenIndex++;
+			if(this.getToken() === ',') {
+				while(this.getToken() !== ';') {
+					if(this.getToken() !== ',') {
+						throw new Error('Expected symbol ","');
+					}
+					varName += this.getFullToken();
+					this.tokenIndex++;
+					if(this.getTokenType() !== 'identifier') {
+						throw new Error('Expected identifier');
+					}
+					varName += this.getFullToken();
+					this.tokenIndex++;
+				}
+			}
+		}
+
+		// get semicolon
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ';') {
+			throw new Error('Expected symbol ";"');
+		} else {
+			semicolon = this.getFullToken();
+			this.tokenIndex++;
+		}
+		return dec + type + varName + semiColon;
+	}
+
+
 }
 
 module.exports = CompilationEngine;
