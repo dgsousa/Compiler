@@ -76,7 +76,7 @@ class CompilationEngine {
 		let fieldOrStaticDec = '';
 		let type = '';
 		let varName = '';
-		let semicolon = '';
+		let semiColon = '';
 		let tokenType = '';
 		let token = '';
 
@@ -134,17 +134,17 @@ class CompilationEngine {
 			}
 		}
 
-		// get semicolon
+		// get semiColon
 		tokenType = this.getTokenType();
 		token = this.getToken();
 		if(tokenType !== 'symbol' || token !== ';') {
 			throw new Error('Expected symbol ";"');
 		} else {
-			semicolon = this.getFullToken();
+			semiColon = this.getFullToken();
 			this.tokenIndex++;
 		}
 
-		return fieldOrStaticDec + type + varName + semicolon;
+		return fieldOrStaticDec + type + varName + semiColon;
 	}
 
 	compileSubroutineDec() {
@@ -372,13 +372,13 @@ class CompilationEngine {
 			}
 		}
 
-		// get semicolon
+		// get semiColon
 		tokenType = this.getTokenType();
 		token = this.getToken();
 		if(tokenType !== 'symbol' || token !== ';') {
 			throw new Error('Expected symbol ";"');
 		} else {
-			semicolon = this.getFullToken();
+			semiColon = this.getFullToken();
 			this.tokenIndex++;
 		}
 		return dec + type + varName + semiColon;
@@ -517,7 +517,7 @@ class CompilationEngine {
 			this.tokenIndex++;
 		}
 
-		// get firstParen, expression, secondParen
+		// get firstBracket, firstStatements, secondBracket
 		let tokenType = this.getTokenType();
 		let token = this.getToken();
 		if(tokenType !== 'symbol' || token !== '{') {
@@ -556,6 +556,122 @@ class CompilationEngine {
 			secondStatements +
 			fourthBracket
 		)
+	}
+
+	compileWhile() {
+		let whileDec = '';
+		let firstParen = '';
+		let expression = '';
+		let secondParen = '';
+		let firstBracket = '';
+		let statements = '';
+		let secondBracket = '';
+		let tokenType = '';
+		let token = '';
+
+		// get while
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'while') {
+			throw new Error('Expected keyword "while"');
+		} else {
+			whileDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstParen, expression, secondParen
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '(') {
+			throw new Error('Expected symbol (');
+		} else {
+			firstParen = this.getFullToken();
+			this.tokenIndex++;
+			expression = this.compileExpression();
+			secondParen = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get firstBracket, statements, secondBracket
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '{') {
+			throw new Error('Expected symbol {');
+		} else {
+			firstBracket = this.getFullToken();
+			this.tokenIndex++;
+			firstStatements = this.compileStatements();
+			secondBracket = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return (
+			whileDec +
+			firstParen +
+			expression +
+			secondParen +
+			firstBracket +
+			statements +
+			secondBracket
+		)
+	}
+
+	compileDo() {
+		let doDec = '';
+		let subroutineCall = '';
+		let tokenType = '';
+		let token = '';
+
+		// get do
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'do') {
+			throw new Error('Expected keyword "do"');
+		} else {
+			doDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get subroutineCall
+		subroutineCall = this.compileSubroutineCall();
+		
+		return doDec + subroutineCall;
+	}
+
+	compileReturn() {
+		let returnDec = '';
+		let expression = '';
+		let semiColon = '';
+		let tokenType = '';
+		let token = '';
+
+		// get return
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'keyword' || token !== 'return') {
+			throw new Error('Expected keyword "return"');
+		} else {
+			returnDec = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get expression
+		let token = this.getToken();
+		if(token !== ';') {
+			subroutineCall = this.compileSubroutineCall();
+		}
+
+		// get semiColon
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ';') {
+			throw new Error('Expected symbol ";"');
+		} else {
+			semiColon = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return returnDec + expression + semiColon;
 	}
 
 
