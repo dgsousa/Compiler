@@ -2,11 +2,15 @@ const fs = require('fs');
 
 const subroutineDecs = new Set(['constructor', 'function', 'method']);
 const statementDecs = new Set(['let', 'if', 'else', 'while', 'do', 'return']);
+const keywordConstants = new Set(['true', 'false', 'null', 'this']);
+const ops = new Set(['+', '-', '*', '/', '&', '|', '<', '>', '=']);
+const unaryOp = new Set(['-', '~']);
 
 class CompilationEngine {
 	constructor(filePath, tokens) {
 		this.tokenIndex = 0;
 		this.tokens = tokens;
+		console.log(this.tokens);
 		this.compiledTokens = this.compileClass();
 		console.log(this.compiledTokens);
 		fs.writeFileSync(filePath, this.compiledTokens);
@@ -297,6 +301,7 @@ class CompilationEngine {
 		token = this.getToken();
 		while(!statementDecs.has(token)) {
 			varDecs += this.compileVarDec();
+			token = this.getToken();
 		}
 
 		// get statements
@@ -619,6 +624,7 @@ class CompilationEngine {
 	compileDo() {
 		let doDec = '';
 		let subroutineCall = '';
+		let semiColon = '';
 		let tokenType = '';
 		let token = '';
 
@@ -633,9 +639,53 @@ class CompilationEngine {
 		}
 
 		// get subroutineCall
-		subroutineCall = this.compileSubroutineCall();
-		
-		return doDec + subroutineCall;
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'identifier') {
+			throw new Error('Expected identifer');
+		} else {
+			subroutineCall += this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get leftParen
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== '(') {
+			throw new Error('Expected symbol "("');
+		} else {
+			subroutineCall += this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get arguments
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(token !== ')') {
+			subroutineCall += this.compileExpressionList();
+		}
+
+		// get rightParen
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ')') {
+			throw new Error('Expected symbol ")"');
+		} else {
+			subroutineCall += this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		// get semiColon
+		tokenType = this.getTokenType();
+		token = this.getToken();
+		if(tokenType !== 'symbol' || token !== ';') {
+			throw new Error('Expected symbol ";"');
+		} else {
+			semiColon = this.getFullToken();
+			this.tokenIndex++;
+		}
+
+		return doDec + subroutineCall + semiColon;
 	}
 
 	compileReturn() {
@@ -672,6 +722,97 @@ class CompilationEngine {
 		}
 
 		return returnDec + expression + semiColon;
+	}
+
+	compileTerm() {
+		let term = '';
+		let tokenType = '';
+		let token = '';
+
+		let tokenType = this.getTokenType();
+		let token = this.getToken();
+		if(
+			tokenType === 'integerConstant' ||
+			tokenType === 'stringConstant'  ||
+			keywordConstants.has(token)
+		) {
+			term += this.getFullToken();
+			this.tokenIndex++;
+		} else if(tokenType === 'identifier') {
+			term += this.getFullToken();
+			this.tokenIndex++;
+			tokenType = this.getTokenType();
+			token = this.getToken();
+			if(tokenType === 'symbol' && token === '[') {
+				term += this.getFullToken();
+				this.tokenIndex++;
+				term += this.compileExpression();
+				term += this.getFullToken();
+				this.tokenIndex++;
+			} else if(tokenType === 'symbol' && token === '(') {
+				term += this.getFullToken();
+				this.tokenIndex++;
+				let tokenType = this.getTokenType();
+				let token = this.getToken();
+				if(token !== ')') {
+					term += this.compileExpressionList();
+				}
+				let tokenType = this.getTokenType();
+				let token = this.getToken();
+				if(tokenType !== 'symbol' || token !== ')') {
+					throw new Error('Expected symbol ")"');
+				} else {
+					term += this.getFullToken();
+					this.tokenIndex++;
+				}
+			}
+		} else if(tokenType === 'symbol' && token === '(') {
+			term += this.getFullToken();
+			this.tokenIndex++;
+			term += this.compileExpression();
+			term += this.getFullToken();
+			this.tokenIndex++;
+		} else if(tokenType === 'symbol' && unaryOp.has(token)) {
+			term += this.getFullToken();
+			this.tokenIndex++;
+			term += this.compileTerm();
+		}
+
+		return term;
+	}
+
+	compileExpression() {
+		let term = '';
+		let token = '';
+
+		token = this.getToken();
+		term += this.getFullTerm();
+		this.tokenIndex++;
+		while(ops.has(token)) {
+			term += this.getFullToken();
+			this.tokenIndex++;
+			term += this.getFullToken();
+			this.tokenIndex++;
+			token = this.getToken();
+		}
+
+		return term;
+	}
+
+	compileExpressionList() {
+		let expressionList = this.getFullToken();
+		this.tokenIndex++;
+		let token = this.getToken();
+		
+		while(token !== ')') {
+			expressionList += this.getFullToken();
+			this.tokenIndex++;
+			expressionList = this.getFullToken();
+			this.tokenIndex++;
+			token = this.getToken();
+		}
+
+		return expressionList;
 	}
 
 
