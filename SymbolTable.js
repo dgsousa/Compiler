@@ -1,32 +1,39 @@
+const kindMap = {
+    var: 'local',
+    argument: 'argument',
+    field: 'field',
+    static: 'static',
+}
+
 class SymbolTable {
-    constructor(className) {
-        this.className = className;
+    constructor() {
         this.counts = {
-            var: 0,
-            arg: 0,
+            local: 0,
+            argument: 0,
             field: 0,
             static: 0
         }
         this.classVars = {};
+        this.subRoutineVars = {};
     }
 
     define(name, type, kind) {
-        const entry = { type, kind, index: this.counts[kind] };
-        (kind === 'STATIC' || kind === 'FIELD')
+        const entry = { type, kind, index: this.counts[kindMap[kind]] };
+        (kind === 'static' || kind === 'field')
             ? this.classVars[name] = entry
             : this.subRoutineVars[name] = entry;
-        this.counts[kind]++;
+        this.counts[kindMap[kind]]++;
     }
 
-    startSubroutine(className) {
-        this.subRoutineVars = {
-            this: { 
-                type: className,
-                kind: 'argument',
-                index: 0,
-            }
-        };
-        this.counts[arg]++;
+    startSubroutine(type, kind) {
+        if(kind === 'method') {
+            this.subRoutineVars = {
+                'this': { type, kind: 'argument', index: 0 }
+            };
+            this.counts.argument++;
+        } else {
+            this.subRoutineVars = {};
+        }
     }
 
     varCount(varKind) {

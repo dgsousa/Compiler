@@ -15,8 +15,9 @@ function formatDec(codeString, decType) {
 class CompilationEngine {
 	constructor(filePath, tokens) {
 		this.symbolTable;
-		console.log('test');
 		this.vmWriter = new VMWriter(filePath);
+		this.type;
+		this.symbolTable = new SymbolTable();
 		this.tokenIndex = 0;
 		this.tokens = tokens;
 		this.compiledTokens = this.compileClass();
@@ -40,7 +41,6 @@ class CompilationEngine {
 	}
 
 	compileClass() {
-		console.log('test');
 		let classDec = '';
 		this.getFullToken();
 		
@@ -49,15 +49,14 @@ class CompilationEngine {
 		} else {
 			classDec += this.getFullToken();
 		}
-		console.log('test1');
+
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected Identifier');
 		} else {
-			this.symbolTable = new SymbolTable(this.getToken());
-			classDec += `<class>${this.getToken()}</class>`
-			this.getFullToken();
+			this.type = this.getToken();
+			classDec += this.getFullToken();
 		}
-		console.log('test');
+
 		if(this.tokenType !== 'symbol' || this.token !== '{') {
 			throw new Error('Expected Symbol {');
 		} else {
@@ -77,12 +76,16 @@ class CompilationEngine {
 		} else {
 			classDec += this.getFullToken();
 		}
-
+		// console.log('classVars', this.symbolTable.classVars);
 		return formatDec(classDec, 'class');
 	}
 
 	compileClassVarDec() {
 		let classVarDec = '';
+		let name = '';
+		let type = '';
+		let kind = '';
+		
 
 		// get field or static declaration
 		if(
@@ -91,6 +94,7 @@ class CompilationEngine {
 		) {
 			throw new Error('Expected keyword "field" or "static"');
 		} else {
+			kind = this.getToken();
 			classVarDec += this.getFullToken();
 		}
 
@@ -100,6 +104,7 @@ class CompilationEngine {
 		} else if(this.tokenType === 'keyword' && (this.token !== 'int' && this.token !== 'char' && this.token !== 'boolean')) {
 			throw new Error('Expected token to be "int", "char", or "boolean"')
 		} else {
+			type = this.getToken();
 			classVarDec += this.getFullToken();
 		}
 
@@ -107,6 +112,8 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected identifier');
 		} else {
+			name = this.getToken();
+			this.symbolTable.define(name, type, kind);
 			classVarDec += this.getFullToken();
 			if(this.token === ',') {
 				while(this.token !== ';') {
@@ -117,6 +124,8 @@ class CompilationEngine {
 					if(this.tokenType !== 'identifier') {
 						throw new Error('Expected identifier');
 					}
+					name = this.getToken();
+					this.symbolTable.define(name, type, kind);
 					classVarDec += this.getFullToken();
 				}
 			}
@@ -134,10 +143,14 @@ class CompilationEngine {
 
 	compileSubroutineDec() {
 		let subroutineDec = '';
+		let type = '';
+		let kind = '';
+
 		// get subroutineDec
 		if(this.tokenType !== 'keyword' || !subroutineDecs.has(this.token)) {
 			throw new Error('Expected keyword "constructor", "function", or "method"');
 		} else {
+			kind = this.getToken();
 			subroutineDec += this.getFullToken();
 		}
 
@@ -150,6 +163,7 @@ class CompilationEngine {
 		 ) {
 			throw new Error('Expected keyword void, int, char or boolean');
 		} else {
+			type = this.getToken();
 			subroutineDec += this.getFullToken();
 		}
 
@@ -157,6 +171,7 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected dentifier');
 		} else {
+			this.symbolTable.startSubroutine(type, kind);
 			subroutineDec += this.getFullToken();
 		}
 
@@ -178,13 +193,17 @@ class CompilationEngine {
 		}
 
 		subroutineDec += this.compileSubroutineBody();
+		// console.log('subRoutineVars', this.symbolTable.subRoutineVars);
 		return formatDec(subroutineDec, 'subroutineDec');
 	}
 
 	compileParameterList() {
 		let parameterList = '';
-		while(this.token !== ')') {
-			
+		let name = '';
+		let type = '';
+		let kind = 'argument';
+		
+		while(this.token !== ')') {	
 			// get typeDec
 			if(this.tokenType !== 'keyword' && this.tokenType !== 'identifier') {
 				throw new Error('Expected keyword or identifier');
@@ -194,6 +213,7 @@ class CompilationEngine {
 			 ) {
 				throw new Error('Expected keyword void, int, char or boolean');
 			} else {
+				type = this.getToken();
 				parameterList += this.getFullToken();
 			}
 
@@ -201,6 +221,8 @@ class CompilationEngine {
 			if(this.tokenType !== 'identifier') {
 				throw new Error('Expected identifier');
 			} else {
+				name = this.getToken();
+				this.symbolTable.define(name, type, kind);
 				parameterList += this.getFullToken();
 			}
 
@@ -241,6 +263,9 @@ class CompilationEngine {
 
 	compileVarDec() {
 		let varDec = '';
+		let name = '';
+		let type = '';
+		let kind = 'var';
 
 		// get var
 		if(this.tokenType !== 'keyword' || this.token !== 'var') {
@@ -258,6 +283,7 @@ class CompilationEngine {
 		 ) {
 			throw new Error('Expected keyword void, int, char or boolean');
 		} else {
+			type = this.getToken();
 			varDec += this.getFullToken();
 		}
 
@@ -265,6 +291,8 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected identifier');
 		} else {
+			name = this.getToken();
+			this.symbolTable.define(name, type, kind);
 			varDec += this.getFullToken();
 			if(this.token === ',') {
 				while(this.token !== ';') {
@@ -275,6 +303,8 @@ class CompilationEngine {
 					if(this.tokenType !== 'identifier') {
 						throw new Error('Expected identifier');
 					}
+					name = this.getToken();
+					this.symbolTable.define(name, type, kind);
 					varDec += this.getFullToken();
 				}
 			}
@@ -382,7 +412,6 @@ class CompilationEngine {
 		if(this.tokenType === 'keyword' && this.token === 'else') {
 			ifStatement += this.getFullToken();
 			if(this.tokenType !== 'symbol' || this.token !== '{') {
-				console.log(ifStatement);
 				throw new Error('Expected symbol "{"') 
 			} else {
 				ifStatement += this.getFullToken();
