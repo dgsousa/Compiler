@@ -14,10 +14,12 @@ function formatDec(codeString, decType) {
 
 class CompilationEngine {
 	constructor(filePath, tokens) {
+		this.symbolTable = new SymbolTable();
+		this.vmWriter = new VMWriter();
 		this.tokenIndex = 0;
 		this.tokens = tokens;
 		this.compiledTokens = this.compileClass();
-		fs.writeFileSync(filePath, this.compiledTokens);
+		// fs.writeFileSync(filePath, this.compiledTokens);
 	}
 
 	getTokenType() {
