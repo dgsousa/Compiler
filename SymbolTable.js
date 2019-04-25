@@ -1,4 +1,4 @@
-export default class SymbolTable {
+class SymbolTable {
     constructor(className) {
         this.className = className;
         this.counts = {
@@ -33,7 +33,7 @@ export default class SymbolTable {
         return this.counts[varKind];
     }
 
-    fieldOf = (fieldName, varName) => {
+    fieldOf(fieldName, varName) {
         if(this.subRoutineVars[varName]) return this.subRoutineVars[varName][fieldName];
         else if(this.classVars[varName]) return this.classVars[varName][fieldName];
     }
@@ -50,3 +50,5 @@ export default class SymbolTable {
         return this.fieldOf('index', varName);
     }
 }
+
+module.exports = SymbolTable;

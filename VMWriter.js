@@ -1,6 +1,7 @@
-export default class VMWriter {
+class VMWriter {
     constructor(filePath) {
         this.filePath = filePath;
+        console.log(this.filePath);
     }
 
     writePush() {
@@ -43,3 +44,5 @@ export default class VMWriter {
 
     }
 }
+
+module.exports = VMWriter;

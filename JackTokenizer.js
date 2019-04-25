@@ -111,9 +111,9 @@ class JackTokenizer {
 			const tokenType = this.tokenType();
 			if(tokenType === 'KEYWORD') token = this.keyWord();
 			if(tokenType === 'SYMBOL') token = this.symbol();
-			if(tokenType === 'IDENTIFIER') token = this.identifier();
 			if(tokenType === 'INT_CONST') token = this.intVal();
 			if(tokenType === 'STRING_CONST') token = this.stringVal();
+			if(tokenType === 'IDENTIFIER') token = this.identifier();
 			this.tokens.push(token);
 		}
 		this.currentToken = '';
