@@ -1,4 +1,6 @@
 const fs = require('fs');
+const SymbolTable = require('./SymbolTable');
+const VMWriter = require('./VMWriter');
 
 const subroutineDecs = new Set(['constructor', 'function', 'method']);
 const statementDecs = new Set(['let', 'if', 'else', 'while', 'do', 'return']);
