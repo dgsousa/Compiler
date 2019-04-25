@@ -1,7 +1,6 @@
-
-
-class SymbolTable {
-    constructor() {
+export default class SymbolTable {
+    constructor(className) {
+        this.className = className;
         this.counts = {
             var: 0,
             arg: 0,
@@ -9,7 +8,6 @@ class SymbolTable {
             static: 0
         }
         this.classVars = {};
-        this.subRoutineVars = {};
     }
 
     define(name, type, kind) {
@@ -20,8 +18,15 @@ class SymbolTable {
         this.counts[kind]++;
     }
 
-    startSubroutine() {
-        this.subRoutineVars = {};
+    startSubroutine(className) {
+        this.subRoutineVars = {
+            this: { 
+                type: className,
+                kind: 'argument',
+                index: 0,
+            }
+        };
+        this.counts[arg]++;
     }
 
     varCount(varKind) {

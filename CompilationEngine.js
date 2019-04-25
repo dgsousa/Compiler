@@ -14,12 +14,11 @@ function formatDec(codeString, decType) {
 
 class CompilationEngine {
 	constructor(filePath, tokens) {
-		this.symbolTable = new SymbolTable();
-		this.vmWriter = new VMWriter();
+		this.symbolTable;
+		this.vmWriter = new VMWriter(filePath);
 		this.tokenIndex = 0;
 		this.tokens = tokens;
-		this.compiledTokens = this.compileClass();
-		// fs.writeFileSync(filePath, this.compiledTokens);
+		this.compileClass();
 	}
 
 	getTokenType() {
@@ -51,7 +50,9 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected Identifier');
 		} else {
-			classDec += this.getFullToken();
+			this.symbolTable = new SymbolTable(this.getToken());
+			classDec += `<class>${this.getToken()}</class>`
+			this.getFullToken();
 		}
 
 		if(this.tokenType !== 'symbol' || this.token !== '{') {
