@@ -16,7 +16,8 @@ class CompilationEngine {
 	constructor(filePath, tokens) {
 		this.symbolTable;
 		this.vmWriter = new VMWriter(filePath);
-		this.type;
+		this.type = '';
+		this.currentSubroutineName = '';
 		this.symbolTable = new SymbolTable();
 		this.tokenIndex = 0;
 		this.tokens = tokens;
@@ -169,6 +170,7 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected dentifier');
 		} else {
+			this.subRoutineName = this.getToken();
 			this.symbolTable.startSubroutine(this.type, kind);
 			subroutineDec += this.getFullToken();
 		}
@@ -246,6 +248,9 @@ class CompilationEngine {
 		while(!statementDecs.has(this.token)) {
 			subroutineBody += this.compileVarDec();
 		}
+
+
+		this.vmWriter.writeFunction(`${this.type}.${this.subRoutineName}`, this.symbolTable.varCount('local'));
 
 		// get statements
 		subroutineBody += this.compileStatements();

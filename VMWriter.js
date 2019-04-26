@@ -32,8 +32,8 @@ class VMWriter {
 
     }
 
-    writeFunction() {
-
+    writeFunction(name, numLocals) {
+        console.log(`function ${name} ${numLocals}`);
     }
 
     writeReturn() {
