@@ -18,7 +18,11 @@ class SymbolTable {
     }
 
     define(name, type, kind) {
-        const entry = { type, kind, index: this.counts[kindMap[kind]] };
+        const entry = {
+            type,
+            kind: kindMap[kind],
+            index: this.counts[kindMap[kind]]
+        };
         (kind === 'static' || kind === 'field')
             ? this.classVars[name] = entry
             : this.subRoutineVars[name] = entry;
@@ -26,6 +30,8 @@ class SymbolTable {
     }
 
     startSubroutine(type, kind) {
+        this.counts.argument = 0;
+        this.counts.local = 0;
         if(kind === 'method') {
             this.subRoutineVars = {
                 'this': { type, kind: 'argument', index: 0 }

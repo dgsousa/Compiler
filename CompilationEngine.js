@@ -62,7 +62,7 @@ class CompilationEngine {
 		} else {
 			classDec += this.getFullToken();
 		}
-
+		
 		while(!subroutineDecs.has(this.token)) {
 			classDec += this.compileClassVarDec();
 		}
@@ -76,7 +76,7 @@ class CompilationEngine {
 		} else {
 			classDec += this.getFullToken();
 		}
-		// console.log('classVars', this.symbolTable.classVars);
+		console.log('classVars', this.symbolTable.classVars);
 		return formatDec(classDec, 'class');
 	}
 
@@ -143,7 +143,6 @@ class CompilationEngine {
 
 	compileSubroutineDec() {
 		let subroutineDec = '';
-		let type = '';
 		let kind = '';
 
 		// get subroutineDec
@@ -163,7 +162,6 @@ class CompilationEngine {
 		 ) {
 			throw new Error('Expected keyword void, int, char or boolean');
 		} else {
-			type = this.getToken();
 			subroutineDec += this.getFullToken();
 		}
 
@@ -171,7 +169,7 @@ class CompilationEngine {
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected dentifier');
 		} else {
-			this.symbolTable.startSubroutine(type, kind);
+			this.symbolTable.startSubroutine(this.type, kind);
 			subroutineDec += this.getFullToken();
 		}
 
@@ -193,7 +191,7 @@ class CompilationEngine {
 		}
 
 		subroutineDec += this.compileSubroutineBody();
-		// console.log('subRoutineVars', this.symbolTable.subRoutineVars);
+		console.log('subRoutineVars', this.symbolTable.subRoutineVars);
 		return formatDec(subroutineDec, 'subroutineDec');
 	}
 
