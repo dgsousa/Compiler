@@ -4,7 +4,7 @@ const JackTokenizer = require('./JackTokenizer');
 const CompilationEngine = require('./CompilationEngine');
 
 function adjustPath(filePath) {
-	return filePath.replace('.jack', 'tt.xml');
+	return filePath.replace('.jack', '.vm');
 }
 
 function analyzer(filePath) {

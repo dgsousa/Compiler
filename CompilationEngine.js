@@ -1,6 +1,5 @@
-const fs = require('fs');
-const SymbolTable = require('./SymbolTable');
-const VMWriter = require('./VMWriter');
+const SymbolTable = require('./SymbolTable.js');
+const VMWriter = require('./VMWriter.js');
 
 const subroutineDecs = new Set(['constructor', 'function', 'method']);
 const statementDecs = new Set(['let', 'if', 'else', 'while', 'do', 'return']);
@@ -17,12 +16,14 @@ class CompilationEngine {
 		this.symbolTable;
 		this.vmWriter = new VMWriter(filePath);
 		this.type = '';
-		this.currentSubroutineName = '';
+		this.subroutineName = '';
+		this.subroutineType = '';
+		this.subroutineKind = '';
 		this.symbolTable = new SymbolTable();
 		this.tokenIndex = 0;
 		this.tokens = tokens;
 		this.compiledTokens = this.compileClass();
-		fs.writeFileSync(filePath, this.compiledTokens);
+		// fs.writeFileSync(filePath, this.compiledTokens);
 	}
 
 	getTokenType() {
@@ -77,7 +78,7 @@ class CompilationEngine {
 		} else {
 			classDec += this.getFullToken();
 		}
-		console.log('classVars', this.symbolTable.classVars);
+
 		return formatDec(classDec, 'class');
 	}
 
@@ -143,15 +144,13 @@ class CompilationEngine {
 	}
 
 	compileSubroutineDec() {
-		let subroutineDec = '';
-		let kind = '';
 
 		// get subroutineDec
 		if(this.tokenType !== 'keyword' || !subroutineDecs.has(this.token)) {
 			throw new Error('Expected keyword "constructor", "function", or "method"');
 		} else {
-			kind = this.getToken();
-			subroutineDec += this.getFullToken();
+			this.subRoutineKind = this.getToken();
+			this.getFullToken(); // advance
 		}
 
 		// get typeDec
@@ -163,7 +162,8 @@ class CompilationEngine {
 		 ) {
 			throw new Error('Expected keyword void, int, char or boolean');
 		} else {
-			subroutineDec += this.getFullToken();
+			this.subRoutineType = this.getToken();
+			this.getFullToken(); // advance
 		}
 
 		// get subroutineNameDec
@@ -171,30 +171,29 @@ class CompilationEngine {
 			throw new Error('Expected dentifier');
 		} else {
 			this.subRoutineName = this.getToken();
-			this.symbolTable.startSubroutine(this.type, kind);
-			subroutineDec += this.getFullToken();
+			this.symbolTable.startSubroutine(this.type, this.subRoutineKind);
+			this.getFullToken(); // advance
 		}
 
 		// get firstParen
 		if(this.tokenType !== 'symbol' || this.token !== '(') {
 			throw new Error('Expected symbol "("');
 		} else {
-			subroutineDec += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 
 		// get parameterList
-		subroutineDec += this.compileParameterList();
+		this.compileParameterList();
 
 		// get secondParen
 		if(this.tokenType !== 'symbol' || this.token !== ')') {
 			throw new Error('Expected symbol ")"');
 		} else {
-			subroutineDec += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 
-		subroutineDec += this.compileSubroutineBody();
-		console.log('subRoutineVars', this.symbolTable.subRoutineVars);
-		return formatDec(subroutineDec, 'subroutineDec');
+		this.compileSubroutineBody();
+		return '';
 	}
 
 	compileParameterList() {
@@ -249,7 +248,7 @@ class CompilationEngine {
 			subroutineBody += this.compileVarDec();
 		}
 
-
+		// has to come after all the local vars have been added to SymbolTable
 		this.vmWriter.writeFunction(`${this.type}.${this.subRoutineName}`, this.symbolTable.varCount('local'));
 
 		// get statements
@@ -459,26 +458,29 @@ class CompilationEngine {
 	}
 
 	compileDo() {
-		let doStatement = '';
-
+		let subRoutineCall = '';
+		
 		// get do
 		if(this.tokenType !== 'keyword' || this.token !== 'do') {
 			throw new Error('Expected keyword "do"');
 		} else {
-			doStatement += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 
 		// get subroutineCall
 		if(this.tokenType !== 'identifier') {
 			throw new Error('Expected identifer');
 		} else {
-			doStatement += this.getFullToken();
+			subRoutineCall += this.getToken();
+			this.getFullToken(); // advance
 			if(this.tokenType === 'symbol' && this.token === '.') {
-				doStatement += this.getFullToken();
+				subRoutineCall += this.getToken();
+				this.getFullToken(); // advance
 				if(this.tokenType !== 'identifier') {
 					throw new Error('Expected identifer');
 				}
-				doStatement += this.getFullToken();
+				subRoutineCall += this.getToken();
+				this.getFullToken(); // advance
 			}
 		}
 
@@ -486,27 +488,30 @@ class CompilationEngine {
 		if(this.tokenType !== 'symbol' || this.token !== '(') {
 			throw new Error('Expected symbol "("');
 		} else {
-			doStatement += this.getFullToken();
+			subRoutineCall += this.getToken();
+			this.getFullToken(); // advance
 		}
 
-		// get arguments
-		doStatement += this.compileExpressionList();
-
+		subRoutineCall += this.compileExpressionList();
+		
 		// get rightParen
 		if(this.tokenType !== 'symbol' || this.token !== ')') {
 			throw new Error('Expected symbol ")"');
 		} else {
-			doStatement += this.getFullToken();
+			subRoutineCall += this.getToken();
+			this.getFullToken(); // advance
 		}
 
 		// get semiColon
 		if(this.tokenType !== 'symbol' || this.token !== ';') {
 			throw new Error('Expected symbol ";"');
 		} else {
-			doStatement += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 
-		return formatDec(doStatement, 'doStatement');
+		this.vmWriter.writeExp(subRoutineCall);
+
+		return '';
 	}
 
 	compileReturn() {
@@ -516,33 +521,41 @@ class CompilationEngine {
 		if(this.tokenType !== 'keyword' || this.token !== 'return') {
 			throw new Error('Expected keyword "return"');
 		} else {
-			returnStatement += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 		// get expression
 		if(this.token !== ';') {
 			returnStatement += this.compileExpression();
 		}
+
+		if(this.subRoutineType === 'void' && returnStatement !== '') {
+			throw new Error(`Expected return type 'void' but received ${returnStatement}`)
+		}
 		// get semiColon
 		if(this.tokenType !== 'symbol' || this.token !== ';') {
 			throw new Error('Expected symbol ";"');
 		} else {
-			returnStatement += this.getFullToken();
+			this.getFullToken(); // advance
 		}
 
-		return formatDec(returnStatement, 'returnStatement');
+		this.vmWriter.writeReturn(returnStatement, this.subRoutineType);
+
+		return '';
 	}
 
 	compileTerm() {
 		let term = '';
 
-		if(
+		if( // here
 			this.tokenType === 'integerConstant' ||
 			this.tokenType === 'stringConstant'  ||
 			keywordConstants.has(this.token)
 		) {
-			term += this.getFullToken();
-		} else if(this.tokenType === 'identifier') {
-			term += this.getFullToken();
+			term += this.getToken();
+			this.getFullToken(); // advance
+		} else if(this.tokenType === 'identifier') { // subroutineCall
+			term += this.getToken();
+			this.getFullToken(); // advance
 			if(this.tokenType === 'symbol' && this.token === '[') {
 				term += this.getFullToken();
 				term += this.compileExpression();
@@ -557,11 +570,13 @@ class CompilationEngine {
 					term += this.getFullToken();
 				}
 			} else if(this.tokenType === 'symbol' && this.token === '.') {
-				term += this.getFullToken();
+				term += this.getToken();
+				this.getFullToken(); // advance
 				if(this.tokenType !== 'identifier') {
 					throw new Error("Expected identifier");
 				}
-				term += this.getFullToken();
+				term += this.getToken();
+				this.getFullToken(); // advance
 				if(this.tokenType !== 'symbol' || this.token !== '(') {
 					throw new Error("Expected symbol (");
 				}
@@ -572,27 +587,36 @@ class CompilationEngine {
 				}
 				term += this.getFullToken();
 			}
-		} else if(this.tokenType === 'symbol' && this.token === '(') {
-			term += this.getFullToken();
+		} else if(this.tokenType === 'symbol' && this.token === '(') { // here
+			term += this.getToken();
+			this.getFullToken();
 			term += this.compileExpression();
-			term += this.getFullToken();
+			term += this.getToken();
+			this.getFullToken();
 
-		} else if(this.tokenType === 'symbol' && unaryOp.has(this.token)) {
-			term += this.getFullToken();
+		} else if(this.tokenType === 'symbol' && unaryOp.has(this.token)) { // here
+			term += this.getToken();
+			this.getFullToken();
 			term += this.compileTerm();
 		}
-		return formatDec(term, 'term');
+
+		return term;
+		// return formatDec(term, 'term');
 	}
 
 	compileExpression() {
 		let expression = '';
-
+		
 		expression += this.compileTerm();
+		
 		while(ops.has(this.token)) {
-			expression += this.getFullToken();
+			expression += this.getToken();
+			this.getFullToken();
 			expression += this.compileTerm();
 		}
-		return formatDec(expression, 'expression');
+
+		return expression;
+		// return formatDec(expression, 'expression');
 	}
 
 	compileExpressionList() {
@@ -601,12 +625,15 @@ class CompilationEngine {
 		if(this.token !== ')') {
 			expressionList += this.compileExpression();
 		}
-
-		while(this.token !== ')') {
-			expressionList += this.getFullToken();
+		
+		while(this.getToken() !== ')') {
+			expressionList += this.getToken();
+			this.getFullToken();
 			expressionList += this.compileExpression();
 		}
-		return formatDec(expressionList, 'expressionList');
+	
+		return expressionList;
+		// return formatDec(expressionList, 'expressionList');
 	}
 
 }
