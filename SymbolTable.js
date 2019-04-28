@@ -49,7 +49,7 @@ class SymbolTable {
     fieldOf(fieldName, varName) {
         if(this.subRoutineVars[varName]) return this.subRoutineVars[varName][fieldName];
         else if(this.classVars[varName]) return this.classVars[varName][fieldName];
-        else throw new Error(`${varName} was not found in the symbol table`);
+        throw new Error(`${varName} was not found in the symbol table`);
     }
 
     kindOf(varName) {

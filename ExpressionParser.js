@@ -9,13 +9,17 @@ const keywords = new Set(['true', 'false', 'null', 'this']);
 function expParser(expression) {
     if(isWrapped(expression)) return 'isWrapped';
     if(isKeywordConstant(expression)) return 'isKeywordConstant';
-    if(Number(expression)) return 'isNumber';
+    if(isNumber(expression)) return 'isNumber';
     if(isVarName(expression)) return 'isVarName';
     if(hasUnaryOp(expression)) return 'hasUnaryOp';
     if(isFunctionCall(expression)) return 'isFunctionCall';
     if(isSequence(expression)) return 'isSequence';
     if(isSequenceWithLongOp(expression)) return 'isSequenceWithLongOp';
     throw new Error('Expression is not recognized');
+}
+
+function isNumber(expression) {
+    return Number(expression) || parseInt(expression) === 0;
 }
 
 function isSequence(expression) {

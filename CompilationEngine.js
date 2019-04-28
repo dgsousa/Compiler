@@ -249,11 +249,10 @@ class CompilationEngine {
 		}
 
 		// has to come after all the local vars have been added to SymbolTable
+		this.vmWriter.writeComment('declare subroutine');
 		this.vmWriter.writeFunction(`${this.type}.${this.subRoutineName}`, this.symbolTable.varCount('local'));
-
-		// get statements
 		subroutineBody += this.compileStatements();
-
+		this.vmWriter.writeComment('end subroutine declaration');
 		// get last bracket
 		if(this.tokenType !== 'symbol' || this.token !== '}') {
 			throw new Error('Expected Symbol }');
@@ -389,8 +388,7 @@ class CompilationEngine {
 
 	compileIf() {
 		let expression = '';
-		let ifStatements = '';
-		let elseStatements = '';
+		let labelIndex;
 
 		// get if
 		if(this.tokenType !== 'keyword' || this.token !== 'if') {
@@ -408,15 +406,26 @@ class CompilationEngine {
 			this.getFullToken(); // advance
 
 		}
+
+		labelIndex = this.labelIndex;
+		this.labelIndex += 2;
+		this.vmWriter.writeComment(`start if statement, labelIndex ${labelIndex}`);
+		this.vmWriter.writeExp(expression, this.symbolTable);
+		this.vmWriter.writeUnaryOp('~');
+		this.vmWriter.writeIf(`${this.type}L${labelIndex}`);
+
 		// get firstBracket, firstStatements, secondBracket
 		if(this.tokenType !== 'symbol' || this.token !== '{') {
 			throw new Error('Expected symbol {');
 		} else {
 			this.getFullToken(); // advance
-			ifStatements += this.compileStatements();
+			this.compileStatements();
 			this.getFullToken(); // advance
 
 		}
+
+		this.vmWriter.writeGoTo(`${this.type}L${labelIndex + 1}`);
+		this.vmWriter.writeLabel(`${this.type}L${labelIndex}`);
 
 		// get else block
 		if(this.tokenType === 'keyword' && this.token === 'else') {
@@ -425,20 +434,13 @@ class CompilationEngine {
 				throw new Error('Expected symbol "{"') 
 			} else {
 				this.getFullToken(); // advance
-				elseStatements += this.compileStatements();
+				this.compileStatements();
 				this.getFullToken(); // advance
 			}
 		}
 
-		this.vmWriter.writeExp(expression, this.symbolTable);
-		this.vmWriter.writeUnaryOp('~');
-		this.vmWriter.writeIf(`${this.type}L${this.labelIndex + 1}`);
-		// execute ifStatements
-		this.vmWriter.writeGoTo(`${this.type}L${this.labelIndex}`);
-		this.vmWriter.writeLabel(`${this.type}L${this.labelIndex + 1}`);
-		// execute elseStatements
-		this.vmWriter.writeLabel(`${this.type}L${this.labelIndex}`);
-		this.labelIndex += 2;
+		this.vmWriter.writeLabel(`${this.type}L${labelIndex + 1}`);
+		this.vmWriter.writeComment(`end if statement, labelIndex ${labelIndex}`);
 
 		return '';
 	}
@@ -446,6 +448,7 @@ class CompilationEngine {
 	compileWhile() {
 		let expression = '';
 		let statements = '';
+		let labelIndex;
 
 		// get while
 		if(this.tokenType !== 'keyword' || this.token !== 'while') {
@@ -463,24 +466,26 @@ class CompilationEngine {
 			this.getFullToken(); // advance
 		}
 
+		labelIndex = this.labelIndex;
+		this.labelIndex += 2;
+		this.vmWriter.writeComment(`start while statement, labelIndex ${labelIndex}`);
+		this.vmWriter.writeLabel(`${this.type}L${labelIndex}`);
+		this.vmWriter.writeExp(expression, this.symbolTable);
+		this.vmWriter.writeUnaryOp('~');
+		this.vmWriter.writeIf(`${this.type}L${labelIndex + 1}`);
+
 		// get firstBracket, statements, secondBracket
 		if(this.tokenType !== 'symbol' || this.token !== '{') {
 			throw new Error('Expected symbol {');
 		} else {
 			this.getFullToken(); // advance
-			statements += this.compileStatements(); // DONT FORGET
+			statements += this.compileStatements();
 			this.getFullToken(); // advance
 		}
 
-		this.vmWriter.writeLabel(`${this.type}L${this.labelIndex}`);
-		this.vmWriter.writeExp(expression, this.symbolTable);
-		this.vmWriter.writeUnaryOp('~');
-		this.vmWriter.writeIf(`${this.type}L${this.labelIndex + 1}`);
-		// writeCompiledStatements?
-		this.vmWriter.writeGoTo(`${this.type}L${this.labelIndex}`);
-		this.vmWriter.writeLabel(`${this.type}L${this.labelIndex + 1}`);
-		this.labelIndex += 2;
-		
+		this.vmWriter.writeGoTo(`${this.type}L${labelIndex}`);
+		this.vmWriter.writeLabel(`${this.type}L${labelIndex + 1}`);
+		this.vmWriter.writeComment(`end while statement, labelIndex ${labelIndex}`);
 		return '';
 	}
 

@@ -39,6 +39,10 @@ class VMWriter {
         this.fileStream = fs.createWriteStream(filePath);
     }
 
+    writeComment(comment) {
+        this.fileStream.write(`\n/* ${comment} */\n\n`.toUpperCase());
+    }
+
     writePush(segment, index) {
         this.fileStream.write(`push ${segment} ${index}\n`);
     }
