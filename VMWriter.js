@@ -3,10 +3,11 @@ const fs = require('fs');
 const {
     expParser,
     splitSequence,
+    splitSequenceLongOp,
     getFunctionCallComponents,
 } = require('./ExpressionParser.js');
 
-const opsMap = {
+const binaryOpsMap = {
     '+': 'add',
     '-': 'sub',
     '&amp;': 'and',
@@ -14,20 +15,23 @@ const opsMap = {
     '&lt;': 'lt',
     '&gt;': 'gt',
     '=': 'eq',
-    '-': 'neg',
-    '~': 'not'
 };
 
-const segmentMap = {
-    'CONST': 'constant',
-    'ARG': 'argument',
-    'LOCAL': 'local',
-    'STATIC': 'static',
-    'THIS': 'this',
-    'THAT': 'that',
-    'POINTER': 'pointer',
-    'TEMP': 'temp',
+const unaryOpsMap = {
+    '-': 'neg',
+    '~': 'not'
 }
+
+// const segmentMap = {
+//     'CONST': 'constant',
+//     'ARG': 'argument',
+//     'LOCAL': 'local',
+//     'STATIC': 'static',
+//     'THIS': 'this',
+//     'THAT': 'that',
+//     'POINTER': 'pointer',
+//     'TEMP': 'temp',
+// }
 
 class VMWriter {
     constructor(filePath) {
@@ -36,29 +40,33 @@ class VMWriter {
     }
 
     writePush(segment, index) {
-        this.fileStream.write(`push ${segmentMap[segment]} ${index}\n`);
+        this.fileStream.write(`push ${segment} ${index}\n`);
     }
 
-    writePop() {
-
+    writePop(segment, index) {
+        this.fileStream.write(`pop ${segment} ${index}\n`);
     }
 
-    writeArithmetic(symbol) {
-        if(opsMap[symbol]) this.fileStream.write(opsMap[symbol] + '\n');
+    writeUnaryOp(symbol) {
+        if(unaryOpsMap[symbol]) this.fileStream.write(unaryOpsMap[symbol] + '\n');
+    }
+
+    writeBinaryOp(symbol) {
+        if(binaryOpsMap[symbol]) this.fileStream.write(binaryOpsMap[symbol] + '\n');
         else if(symbol === '*') this.writeCall('Math.multiply', 2);
         else if(symbol === '/') this.writeCall('Math.divide', 2);
     }
 
-    writeLabel() {
-
+    writeLabel(label) {
+        this.fileStream.write(`label ${label}\n`);
     }
 
-    writeGoto() {
-
+    writeGoTo(label) {
+        this.fileStream.write(`goto ${label}\n`);
     }
 
-    writeIf() {
-
+    writeIf(label) {
+        this.fileStream.write(`if-goto ${label}\n`);
     }
 
     writeCall(subRoutineName, nArgs) {
@@ -69,33 +77,55 @@ class VMWriter {
         this.fileStream.write(`function ${name} ${numLocals}\n`);
     }
 
-    writeReturn(value, type) {
-        if(type != 'void') this.writeExp(value);
-        else this.writePush('CONST', 0);
-        this.fileStream.write(`return`);
+    writeReturn(value, type, symbolTable) {
+        if(type != 'void') this.writeExp(value, symbolTable);
+        else this.writePush('constant', 0);
+        this.fileStream.write(`return\n`);
     }
 
     close() {
         this.fileStream.close();
     }
 
-    writeExp(expression) {
+    writeExp(expression, symbolTable) {
         const expType = expParser(expression);
-        if(expType === 'isWrapped') this.writeExp(expression.substring(1, expression.length - 1));
-        if(expType === 'isNumber') this.writePush('CONST', expression);
-        if(expType === 'isVarName') this.writePush(expression);
+        if(expType === 'isWrapped') this.writeExp(expression.substring(1, expression.length - 1), symbolTable);
+        if(expType === 'isKeywordConstant') {
+            if(expression === 'this') { console.log('this') };
+            if(expression === 'false' || expression === 'null') this.writePush('constant', 0);
+            if(expression === 'true') {
+                this.writePush('constant', 1);
+                this.writeUnaryOp('-');
+            }
+        }
+        if(expType === 'isNumber') this.writePush('constant', expression);
+        if(expType === 'isVarName') {
+            const kind = symbolTable.kindOf(expression);
+            const index = symbolTable.indexOf(expression);
+            this.writePush(kind, index);
+        };
+        if(expType === 'hasUnaryOp') {
+            this.writeExp(expression.slice(1), symbolTable);
+            this.writeUnaryOp(expression[0]);
+        }
         if(expType === 'isFunctionCall') {
             const components = getFunctionCallComponents(expression);
             components[1].forEach(arg => {
-                this.writeExp(arg);
+                this.writeExp(arg, symbolTable);
             })
             this.writeCall(components[0], components[1].length);
         }
         if(expType === 'isSequence') {
             const sequence = splitSequence(expression);
-            this.writeExp(sequence[0]);
-            this.writeExp(sequence[2]);
-            this.writeArithmetic(sequence[1]);
+            this.writeExp(sequence[0], symbolTable);
+            this.writeExp(sequence[2], symbolTable);
+            this.writeBinaryOp(sequence[1]);
+        }
+        if(expType === 'isSequenceWithLongOp') {
+            const sequence = splitSequenceLongOp(expression);
+            this.writeExp(sequence[0], symbolTable);
+            this.writeExp(sequence[2], symbolTable);
+            this.writeBinaryOp(sequence[1]);
         }
     } 
 }

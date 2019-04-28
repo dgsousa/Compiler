@@ -1,1 +1,3 @@
 
+parse multi-character operations
+separate unary ops from binary ops

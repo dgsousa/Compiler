@@ -3,15 +3,18 @@
 const stringChars = /^[a-zA-Z0-9_.]*$/;
 const unaryOp = new Set(['-', '~']);
 const ops = new Set(['+', '-', '*', '/', '&amp;', '|', '&lt;', '&gt;', '=']);
+const keywords = new Set(['true', 'false', 'null', 'this']);
 
 
 function expParser(expression) {
     if(isWrapped(expression)) return 'isWrapped';
+    if(isKeywordConstant(expression)) return 'isKeywordConstant';
     if(Number(expression)) return 'isNumber';
     if(isVarName(expression)) return 'isVarName';
-    // if(isUnaryOp(expression)) return 'isUnaryOp';
+    if(hasUnaryOp(expression)) return 'hasUnaryOp';
     if(isFunctionCall(expression)) return 'isFunctionCall';
     if(isSequence(expression)) return 'isSequence';
+    if(isSequenceWithLongOp(expression)) return 'isSequenceWithLongOp';
     throw new Error('Expression is not recognized');
 }
 
@@ -24,13 +27,28 @@ function isSequence(expression) {
     return ops.has(expression[counter]);
 }
 
+function isSequenceWithLongOp(expression) {
+    let counter = 0;
+    const length = expression.length;
+    while(counter < length && !ops.has(expression[counter]) && !ops.has(expression)) {
+        if((counter < length - 5) && ops.has(expression.substring(counter, counter + 5))) {
+            return true;
+        }
+        if((counter < length - 4) && ops.has(expression.substring(counter, counter + 4))) {
+            return true;
+        }
+        counter++;
+    }
+    return false;
+}
+
 // still needs to be extended for subProperties !!!
 function isVarName(expression) {
     if(Number(expression[0])) return false;
     return stringChars.test(expression);
 }
 
-function isUnaryOp(expression) {
+function hasUnaryOp(expression) {
     return unaryOp.has(expression[0]);
 }
 
@@ -49,20 +67,48 @@ function isFunctionCall(expression) {
 }
 
 function splitSequence(expression) {
-    let before = ''
     let counter = 0;
     let parenCount = 0;
     const length = expression.length;
     while(!(ops.has(expression[counter]) && parenCount === 0)) {
-        before += expression[counter];
         if(expression[counter] === '(') parenCount++;
         if(expression[counter] === ')') parenCount--;
         counter++;
     }
     return [
-        before,
+        expression.substring(0, counter),
         expression[counter],
         expression.substring(counter + 1, length),
+    ];
+}
+
+function splitSequenceLongOp(expression) {
+    let op = ''
+    let length = expression.length;
+    let counter = 0;
+    let parenCount = 0;
+    let hasOp = false;
+    while(counter < length && parenCount === 0 && !hasOp) {
+        if(counter < length - 5 && expression.substring(counter, counter + 5) === '&amp;') {
+            op = '&amp;';
+            hasOp = true;
+        }
+        if(counter < length - 4 && expression.substring(counter, counter + 4) === '&lt;') {
+            op = '&lt;';
+            hasOp = true;
+        }
+        if(counter < length - 4 && expression.substring(counter, counter + 4) === '&gt;') {
+            op = '&gt;';
+            hasOp= true;
+        }
+        if(expression[counter] === '(') parenCount++;
+        if(expression[counter] === ')') parenCount--;
+        counter++;
+    }
+    return [
+        expression.substring(0, counter - 1),
+        op,
+        expression.substring(counter + op.length - 1, length),
     ];
 }
 
@@ -84,8 +130,13 @@ function getFunctionCallComponents(expression) {
     return components;
 }
 
+function isKeywordConstant(expression) {
+    return keywords.has(expression);
+}
+
 module.exports = {
     expParser,
     splitSequence,
-    getFunctionCallComponents
+    splitSequenceLongOp,
+    getFunctionCallComponents,
 };
